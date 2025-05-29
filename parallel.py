@@ -138,12 +138,12 @@ def make_graph(memory):
 
     graph.add_node("trim", trim)
 
-    graph.add_node("search", search)
-    graph.add_node("confirm_docs", confirm_docs)
-    graph.add_node("pruning", pruning)
+    graph.add_node("search", search, metadata={"category": "docs"})
+    graph.add_node("confirm_docs", confirm_docs, metadata={"category": "docs"})
+    graph.add_node("pruning", pruning, metadata={"category": "docs"})
 
-    graph.add_node("gen_backstory", gen_backstory)
-    graph.add_node("confirm_backstory", confirm_backstory)
+    graph.add_node("gen_backstory", gen_backstory, metadata={"category": "backstory"})
+    graph.add_node("confirm_backstory", confirm_backstory, metadata={"category": "backstory"})
 
     graph.add_node("answer", answer)
 
