@@ -1,7 +1,7 @@
 {
     "dependencies": ["."],
     "graphs": {
-      "agent": "./rat.py:make_graph"
+      "parallel": "./parallel_rat.py:make_graph"
     },
     "env": "./.env"
   }
