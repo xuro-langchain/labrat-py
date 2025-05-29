@@ -1,0 +1,7 @@
+{
+    "dependencies": ["."],
+    "graphs": {
+      "agent": "./rat.py:make_graph"
+    },
+    "env": "./.env"
+  }

@@ -38,6 +38,9 @@ class GraphState(TypedDict):
     docs_approval: bool
     backstory_appproval: bool
 
+class InputState(TypedDict):
+    question: str
+
 
 async def trim(state: GraphState):
     question = state["question"]
@@ -50,17 +53,17 @@ async def search(state: GraphState):
     documents = state.get("documents", [])
 
     # Web search
-    web_docs = web_search_tool.ainvoke({"query": question})
-    web_results = "\n".join([d["content"] for d in web_docs])
-    web_results = Document(page_content=web_results)
-    documents.append(web_results)
+    web_docs = await web_search_tool.ainvoke({"query": question})
+    for d in web_docs:
+        web_results = Document(page_content=d["content"])
+        documents.append(web_results)
 
-    return {"documents": documents, "question": question}
+    return {"documents": documents}
 
 
 async def confirm_docs(state: GraphState):
     human_response = interrupt({"query": "Please confirm that the documents look relevant. (Y/n)"})
-    response = human_response["data"]
+    response = human_response
     if response.lower() != "y" and response.lower() != "yes":
         return {"docs_approval": False}
     return {"docs_approval": True}
@@ -68,31 +71,30 @@ async def confirm_docs(state: GraphState):
 
 async def pruning(state: GraphState):
     documents = state.get("documents", [])
-    approval = documents = state.get("docs_approval", True)
+    approval = state.get("docs_approval", True)
     if len(documents) > 2 and not approval: 
-        idx = random.randint(2, len(documents) - 1)
-        del documents[idx]
+        pruned = documents[:-1]
+        return {"documents": pruned}
     return {"documents": documents}
 
 
-async def backstory(state: GraphState):
-    # Define prompt template
+async def gen_backstory(state: GraphState):
     prompt = """You are an expert improv comedian and actor. 
     Based on the question asked, create an engaging persona you believe will entertain the user.
-    Create a short backstory, less than 3 sentences.
+    Create a short backstory, less than 3 sentences. Speak in the first person, taking on the role.
 
     Question: {question}
 
     Backstory:"""
     question = state["question"]
     formatted = prompt.format(question=question)
-    generation = llm.ainvoke([HumanMessage(content=formatted)])
-    return {"backstory": generation}
+    generation = await llm.ainvoke([HumanMessage(content=formatted)])
+    return {"backstory": generation.content}
 
 
 async def confirm_backstory(state: GraphState):
     human_response = interrupt({"query": "Do you find this persona interesting? (Y/n)"})
-    response = human_response["data"]
+    response = human_response
     if response.lower() != "y" and response.lower() != "yes":
         return {"backstory_approval": False}
     return {"backstory_approval": True}
@@ -102,7 +104,7 @@ async def confirm_backstory(state: GraphState):
 async def answer(state: GraphState):
     question = state["question"]
     documents = state.get("documents", [])
-    backstory_approval = documents = state.get("backstory_approval", False)
+    backstory_approval = state.get("backstory_approval", False)
     if backstory_approval:
         prompt = """You are an eccentric professor with an interesting past. 
         Your job is to summarize the answer to a question based on relevant background context.
@@ -127,12 +129,12 @@ async def answer(state: GraphState):
 
         Answer:"""
         formatted = prompt.format(question=question, context="\n".join([d.page_content for d in documents]))
-    generation = llm.ainvoke([HumanMessage(content=formatted)])
+    generation = await llm.ainvoke([HumanMessage(content=formatted)])
     return {"messages": [generation]}
 
 
 def make_graph(memory):
-    graph = StateGraph(GraphState)
+    graph = StateGraph(GraphState, input=InputState)
 
     graph.add_node("trim", trim)
 
@@ -140,7 +142,7 @@ def make_graph(memory):
     graph.add_node("confirm_docs", confirm_docs)
     graph.add_node("pruning", pruning)
 
-    graph.add_node("backstory", backstory)
+    graph.add_node("gen_backstory", gen_backstory)
     graph.add_node("confirm_backstory", confirm_backstory)
 
     graph.add_node("answer", answer)
@@ -148,14 +150,14 @@ def make_graph(memory):
 
     graph.add_edge(START, "trim")
     graph.add_edge("trim", "search")
-    graph.add_edge("trim", "backstory")
+    graph.add_edge("trim", "gen_backstory")
 
     graph.add_edge("search", "confirm_docs")
     graph.add_edge("confirm_docs", "pruning")
     graph.add_edge("pruning", "answer")
 
-    graph.add_edge("backstory", "confirm_backstory")
-    graph.add_edge("backstory", "answer")
+    graph.add_edge("gen_backstory", "confirm_backstory")
+    graph.add_edge("confirm_backstory", "answer")
     graph.add_edge("answer", END)
 
     return graph.compile(checkpointer=memory)
@@ -163,16 +165,19 @@ def make_graph(memory):
 
 def print_messages(response):
     if isinstance(response, tuple) and isinstance(response[0], Interrupt):
+        print("INTERRUPT =================")
         message = response[0].value["query"]
         if message:
             print("AI: " + message)
-    elif isinstance(response, dict) and "messages" in response:
-        messages = response["messages"]
-        for message in messages:
-            if isinstance(message, AIMessage) and message.content:
-                print(f"AI: {message.content}")
-            if isinstance(message, ToolMessage):
-                print(f"Tool called: {message.name}")
+    elif isinstance(response, dict):
+        print("STATE UPDATE ----------------")
+        for key in response:
+            if key == "documents":
+                print("# of Documents: " + str(len(response["documents"])))
+            elif key == "messages":
+                print("messages: " + response["messages"][-1].content)
+            else:
+                print(key + ": " + str(response[key]))
 
 
 async def run(graph: StateGraph):
@@ -196,11 +201,11 @@ async def run(graph: StateGraph):
             break
         
         if interrupted:
-            turn_input = Command(resume={"data": user})
+            turn_input = Command(resume=user)
             interrupted = False
         else:
             # Add user message to state
-            state["question"] = [user]
+            state["question"] = user
             turn_input = state
         try:
             # Stream responses
