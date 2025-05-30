@@ -185,7 +185,7 @@ async def run(graph: StateGraph):
     config = {
         "configurable": {
             "thread_id": str(thread_id),
-            "checkpoint_ns": "music_store",
+            "checkpoint_ns": "para",
         }
     }
     interrupts = []
