@@ -36,7 +36,7 @@ class GraphState(TypedDict):
     backstory: str
     messages: List[str]
     docs_approval: bool
-    backstory_appproval: bool
+    backstory_approval: bool
 
 class InputState(TypedDict):
     question: str
@@ -145,7 +145,7 @@ def make_graph(memory):
     graph.add_node("gen_backstory", gen_backstory, metadata={"category": "backstory"})
     graph.add_node("confirm_backstory", confirm_backstory, metadata={"category": "backstory"})
 
-    graph.add_node("answer", answer)
+    graph.add_node("answer", answer, defer=True)
 
 
     graph.add_edge(START, "trim")
@@ -164,12 +164,7 @@ def make_graph(memory):
 
 
 def print_messages(response):
-    if isinstance(response, tuple) and isinstance(response[0], Interrupt):
-        print("INTERRUPT =================")
-        message = response[0].value["query"]
-        if message:
-            print("AI: " + message)
-    elif isinstance(response, dict):
+    if isinstance(response, dict):
         print("STATE UPDATE ----------------")
         for key in response:
             if key == "documents":
@@ -193,30 +188,35 @@ async def run(graph: StateGraph):
             "checkpoint_ns": "music_store",
         }
     }
-    interrupted = False
+    interrupts = []
     while True:
-        user = input('User (q to quit): ')
-        if user in {'q', 'Q'}:
-            print('AI: Goodbye!')
-            break
-        
-        if interrupted:
-            turn_input = Command(resume=user)
-            interrupted = False
-        else:
-            # Add user message to state
+        if len(interrupts) == 0:
+            user = input('User (q to quit): ')
+            if user in {'q', 'Q'}:
+                print('AI: Goodbye!')
+                break
             state["question"] = user
             turn_input = state
+        else:
+            resumable = {}
+            for interrupt in interrupts:
+                print("INTERRUPT==================")
+                print(interrupt.value)
+                user = input('User: ')
+                resumable[interrupt.interrupt_id] = user
+            turn_input = Command(resume=resumable)
+            interrupts = []
         try:
             # Stream responses
+            print(turn_input)
             async for output in graph.astream(turn_input, config, stream_mode="updates"):
                 if END in output or START in output:
                     continue
                 # Print any node outputs
                 for key, value in output.items():
                     print_messages(value)
-                if key == "__interrupt__":
-                    interrupted = True
+                    if key == "__interrupt__":
+                        interrupts.append(value[0])
         except Exception as e:
             print(f"Error: {str(e)}")
             raise e
