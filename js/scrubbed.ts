@@ -2,7 +2,7 @@
 
 import 'dotenv/config'
 import { ChatOpenAI } from "@langchain/openai";
-import { MemorySaver, StateGraph, START, END, 
+import { MemorySaver, StateGraph, START, END, type StreamMode,
     Annotation, type Messages, messagesStateReducer } 
     from "@langchain/langgraph";
 import { BaseMessage, HumanMessage, 
@@ -79,7 +79,7 @@ async function runChat() {
                 break;
             }
             const inputs = {messages: [new HumanMessage(userInput)]}
-            for await (const chunk of await graph.stream(inputs, { ...config, streamMode: ["events", "messages"] })) {
+            for await (const chunk of await graph.stream(inputs, { ...config, streamMode: ["events", "messages"] as StreamMode[] })) {
               if (chunk[0] instanceof AIMessageChunk) {
                 process.stdout.write(String(chunk[0].content));
               } else if (chunk[0] === 'messages' && chunk[1][0] instanceof AIMessageChunk) {
