@@ -122,7 +122,7 @@ async def run(graph: StateGraph):
     state: GraphState = {
         "messages": [],
     }
-
+    
     thread_id = random.randint(0, 1000000)
     config = {
         "configurable": {
