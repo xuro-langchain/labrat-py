@@ -44,8 +44,8 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.LANGSMITH_API_KEY }}" \
             -H "Content-Type: application/json" \
             -d '{
-              "image_path": ${{ github.repository }}:${{ github.sha }},
-              "repo_path": ${{ env.LANGGRAPH_CONFIG_PATH }},
+              "image_path": "${{ github.repository }}:${{ github.sha }}",
+              "repo_path": "${{ env.LANGGRAPH_CONFIG_PATH }}",
               "env_vars": [
                 {
                   "name": "OPENAI_API_KEY",
