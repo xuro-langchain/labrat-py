@@ -41,7 +41,7 @@ jobs:
         id: deploy
         run: |
           curl -X POST "${{ env.LANGSMITH_HOST }}/v1/projects/${{ env.LANGGRAPH_PROJECT_ID }}/revisions" \
-            -H "Authorization: Bearer ${{ secrets.LANGSMITH_API_KEY }}" \
+            -H "X-Api-Key: ${{ secrets.LANGSMITH_API_KEY }}" \
             -H "Content-Type: application/json" \
             -d '{
               "image_path": "${{ github.repository }}:${{ github.sha }}",
