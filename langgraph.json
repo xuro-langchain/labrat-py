@@ -1,0 +1,9 @@
+{
+    "dependencies": ["."],
+    "graphs": {
+      "parallel-py": "./rats/parallel.py:make_graph",
+      "scrubbed-py": "./rats/scrubbed.py:make_graph",
+      "staggered-py": "./rats/staggered.py:make_graph"
+    },
+    "env": "./.env"
+  }

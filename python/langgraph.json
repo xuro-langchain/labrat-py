@@ -1,7 +1,0 @@
-{
-    "dependencies": ["."],
-    "graphs": {
-      "parallel": "./parallel.py:make_graph"
-    },
-    "env": "./.env"
-  }
