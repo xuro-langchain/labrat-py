@@ -29,7 +29,7 @@ llm = ChatOpenAI(model_name="gpt-4o", temperature=0)
 # Initialize web search tool
 web_search_tool = TavilySearchResults(max_results=3)
 
-# Configure LangSmith client to hide data
+# Configure LangSmith client to hide all data
 langsmith_client = Client(
     hide_inputs=lambda inputs: {},
     hide_outputs=lambda outputs: {}
