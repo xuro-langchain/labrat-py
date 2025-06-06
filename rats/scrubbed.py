@@ -66,7 +66,6 @@ async def search(state: GraphState):
     query = state["query"]
     documents = state.get("documents", [])
 
-    # Web search
     web_docs = await web_search_tool.ainvoke({"query": query})
     for d in web_docs:
         web_results = Document(page_content=d["content"])
