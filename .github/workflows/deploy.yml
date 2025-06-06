@@ -8,8 +8,8 @@ on:
 env:
   IMAGE_NAME: ${{ github.repository }}
   LANGSMITH_HOST: ${{ vars.LANGSMITH_HOST }}
-  PROJECT_ID: ${{ vars.LANGGRAPH_PROJECT_ID }}
-  CONFIG_PATH: ${{ vars.LANGGRAPH_CONFIG_PATH }}
+  LANGGRAPH_PROJECT_ID: ${{ vars.LANGGRAPH_PROJECT_ID }}
+  LANGGRAPH_CONFIG_PATH: ${{ vars.LANGGRAPH_CONFIG_PATH }}
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -40,12 +40,12 @@ jobs:
       - name: Create LangGraph Revision
         id: deploy
         run: |
-          curl -X POST "${{ env.LANGSMITH_HOST }}/v1/projects/${{ env.PROJECT_ID }}/revisions" \
+          curl -X POST "${{ env.LANGSMITH_HOST }}/v1/projects/${{ env.LANGGRAPH_PROJECT_ID }}/revisions" \
             -H "Authorization: Bearer ${{ secrets.LANGSMITH_API_KEY }}" \
             -H "Content-Type: application/json" \
             -d '{
               "image_path": ${{ github.repository }}:${{ github.sha }},
-              "repo_path": ${{ env.CONFIG_PATH }},
+              "repo_path": ${{ env.LANGGRAPH_CONFIG_PATH }},
               "env_vars": [
                 {
                   "name": "OPENAI_API_KEY",
