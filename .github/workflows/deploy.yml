@@ -1,0 +1,61 @@
+name: Deploy to LangGraph Platform
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  IMAGE_NAME: ${{ github.repository }}
+  LANGSMITH_HOST: ${{ vars.LANGSMITH_HOST }}
+  PROJECT_ID: ${{ vars.LANGGRAPH_PROJECT_ID }}
+  CONFIG_PATH: ${{ vars.LANGGRAPH_CONFIG_PATH }}
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+          pip install langgraph-cli
+          
+      - name: Build LangGraph image
+        id: build
+        run: |
+          langgraph build -t ${{ github.repository }}:${{ github.sha }}
+      
+      - name: Create LangGraph Revision
+        id: deploy
+        run: |
+          curl -X POST "${{ env.LANGSMITH_HOST }}/v1/projects/${{ env.PROJECT_ID }}/revisions" \
+            -H "Authorization: Bearer ${{ secrets.LANGSMITH_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "image_path": ${{ github.repository }}:${{ github.sha }},
+              "repo_path": ${{ env.CONFIG_PATH }},
+              "env_vars": [
+                {
+                  "name": "OPENAI_API_KEY",
+                  "value": "${{ secrets.OPENAI_API_KEY }}",
+                  "type": "secret"
+                },
+                {
+                  "name": "TAVILY_API_KEY",
+                  "value": "${{ secrets.TAVILY_API_KEY }}",
+                  "type": "secret"
+                }
+              ]
+            }' 
