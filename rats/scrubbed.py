@@ -141,6 +141,7 @@ async def run(graph: StateGraph):
 
         try:
             async for chunk in graph.astream(turn_input, config, stream_mode=["messages"]):
+                print(chunk)
                 if isinstance(chunk, tuple) and isinstance(chunk[0], AIMessage):
                     print(chunk[0].content, flush=True, end="")
             print("\n")
