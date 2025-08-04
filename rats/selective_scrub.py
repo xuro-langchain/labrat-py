@@ -103,8 +103,7 @@ async def make_graph(memory):
     graph.add_edge("clarify", "search")
     graph.add_edge("search", "answer")
     graph.add_edge("answer", END)
-    with tracing_context(client=langsmith_client):
-        yield graph.compile(checkpointer=memory)
+    yield graph.compile(checkpointer=memory)
 
 
 def print_messages(response):
@@ -139,11 +138,12 @@ async def run(graph: StateGraph):
         turn_input = state
 
         try:
-            async for chunk in graph.astream(turn_input, config, stream_mode=["messages"]):
-                print(chunk)
-                if isinstance(chunk, tuple) and isinstance(chunk[0], AIMessage):
-                    print(chunk[0].content, flush=True, end="")
-            print("\n")
+            with tracing_context(enabled=True, client=langsmith_client):
+                async for chunk in graph.astream(turn_input, config, stream_mode=["messages"]):
+                    if isinstance(chunk, tuple) and chunk[0] == "messages":
+                        msg_chunk = chunk[1][0]
+                        print(msg_chunk.content, end="")
+                print()  # Newline at the end
         except Exception as e:
             print(f"Error: {str(e)}")
             raise e
